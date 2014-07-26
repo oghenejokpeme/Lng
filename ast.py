@@ -76,6 +76,23 @@ class Assignment(Node):
 
 		elif isinstance(self.expression, Binary_Operation) == True:
 			ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()
+
+		elif isinstance(self.expression, FunctionCall):
+			#Since function is getting assigned execute function before assignment
+			#Doesn't currently check if function has a return statemen or not.
+			self.expression.eval(ctx)
+
+			call = self.expression
+			
+			func_name = call.r_name().strval
+			func_name += "()"
+			try:
+				return_val = ctx.env[func_name]
+				ctx.env[self.lvalue.eval(ctx).strval] = return_val
+			except KeyError as e:
+				#Put yet to be written error function here
+				pass
+			
 		#The following two conditions handle lists
 		elif isinstance(self.expression, Block):
 			values = []
@@ -247,6 +264,13 @@ class Function(Node):
 		ctx.func_list.append(func_details)
 		#Makes function details and pushes them to the function list
 
+class Return(Node):
+	def __init__(self, return_val):
+		self.return_val = return_val
+
+	def eval(self, ctx):
+		pass
+
 class FunctionCall(Node):
 	def __init__(self, func_name, func_arguments):
 		self.func_name = func_name
@@ -261,13 +285,26 @@ class FunctionCall(Node):
 			if len(ctx.func_list) > 0:
 				for defined_function in ctx.func_list:
 					if self.func_name == defined_function[0]:
-						defined_function[2].eval(l_env)
+						#defined_function[2].eval(l_env)
+
+						#Return statement
+						for statement in defined_function[2].getastlist():
+							if not isinstance(statement, Return):
+								statement.eval(l_env)
+							else:
+								if isinstance(statement.return_val, Id):
+									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env).lookup(l_env)
+								elif isinstance(statement.return_val, Number):
+									#Sort out what should happen when it's 0, 1 or -1
+									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env)
+								elif isinstance(statement.return_val, String):
+									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env)
 
 		#Functions with arguments
 		elif self.func_arguments is not None:
 			#compare the number of arguments to the actual number of arguments the function should take
 			for defined_function in ctx.func_list:
-				if self.func_name == defined_function[0]:
+				if self.func_name == defined_function[0] and defined_function[1] is not None:
 					if len(defined_function[1].getastlist()) == len(self.func_arguments.getastlist()):
 						#Sort out all the arguments
 						arg_values = self.func_arguments.getastlist(); arg_names = defined_function[1].getastlist()
@@ -286,10 +323,29 @@ class FunctionCall(Node):
 							pos += 1
 
 						#Execute all the inside statements
-						defined_function[2].eval(l_env)
+						for statement in defined_function[2].getastlist():
+							if not isinstance(statement, Return):
+								statement.eval(l_env)
+							else:
+								if isinstance(statement.return_val, Id):
+									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env).lookup(l_env)
+								elif isinstance(statement.return_val, Number):
+									#Sort out what should happen when it's 0, 1 or -1
+									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env)
+								elif isinstance(statement.return_val, String):
+									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env)
+						
 					else:
-						print "Unequal number of arguments"
-						#This should break the interpretation and end 
+						#Execute to be written error output function
+						pass
+
+				else:
+					#Execute to be written error output function
+					pass
+
+	def r_name(self):
+		from interpreter import W_StrObject
+		return W_StrObject(self.func_name)
 
 def jitpolicy(driver):
     from pypy.jit.codewriter.policy import JitPolicy
