@@ -24,7 +24,6 @@ def entry_point(argv):
 
     ctx = Interpreter()
     ast.eval(ctx)
-
     #print ctx.env
     #print ctx.func_list
 

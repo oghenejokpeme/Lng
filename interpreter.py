@@ -110,11 +110,17 @@ class W_BoolObject(W_Root):
 				return W_StrObject('False')	
 
 
-class Interpreter(object):
+class Interpreter(W_Root):
 	def __init__(self):
-		self.env = {}
+		self.env = {} #Global environment
+		self.local_env = {}
 		self.func_list = []
 		self.instructions = []
 
 	def evaluate(self):
 		pass
+
+#Function scoping hack.
+class local_scope(W_Root):
+	def __init__(self):
+		self.env = {}

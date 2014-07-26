@@ -113,10 +113,14 @@ def function_def(p):
 
 
 @pg.production('statement : ID LPAREN RPAREN')
+@pg.production('statement : ID LPAREN statements RPAREN')
 def function_call(p):
 	if len(p) == 3:
 		#print p[0].getstr()
-		return FunctionCall(p[0].getstr())
+		return FunctionCall(p[0].getstr(), None)
+	elif len(p) == 4:
+		#print p[0], p[2]
+		return FunctionCall(p[0].getstr(), p[2])
 
 parser = pg.build()
 
