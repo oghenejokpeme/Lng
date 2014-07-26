@@ -253,20 +253,18 @@ class FunctionCall(Node):
 		self.func_arguments = func_arguments
 
 	def eval(self, ctx):
-		#At this point i'm clearly inside a function
-		#You can parse another ctx at this point
-		#The best solution would be to parse another
 		from interpreter import local_scope
 		l_env = local_scope()
 
+		#functions without arguments
 		if self.func_arguments is None:
 			if len(ctx.func_list) > 0:
 				for defined_function in ctx.func_list:
 					if self.func_name == defined_function[0]:
 						defined_function[2].eval(l_env)
 
+		#Functions with arguments
 		elif self.func_arguments is not None:
-			#print self.func_arguments.getastlist()
 			#compare the number of arguments to the actual number of arguments the function should take
 			for defined_function in ctx.func_list:
 				if self.func_name == defined_function[0]:
@@ -284,8 +282,7 @@ class FunctionCall(Node):
 							elif isinstance(arg_values[pos], Number):
 								value = arg_values[pos].eval(l_env)
 								l_env.env[name] = value
-							
-							#l_env.env[name] = value
+						
 							pos += 1
 
 						#Execute all the inside statements
@@ -293,13 +290,6 @@ class FunctionCall(Node):
 					else:
 						print "Unequal number of arguments"
 						#This should break the interpretation and end 
-			
-
-		#This then should access the function list, check for the function name
-		#and perform the operations in the function
-
-		#Two seprate branches, functions with arguments and functions without arguments
-		#pass
 
 def jitpolicy(driver):
     from pypy.jit.codewriter.policy import JitPolicy
