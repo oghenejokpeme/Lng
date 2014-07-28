@@ -12,17 +12,6 @@ class W_IntObject(W_Root):
 	def std_out(self):
 		return str(self.intval)
 
-class W_FloatObject(W_Root):
-	def __init__(self, floatval):
-		assert(isinstance(floatval, float))
-		self.floatval = floatval
-
-	def r_self(self):
-		return W_FloatObject(self.floatval)
-
-	def std_out(self):
-		return str(self.floatval)
-
 class W_ListObject(W_Root):
 	def __init__(self, f_list):
 		assert(isinstance(f_list, list))
@@ -46,13 +35,13 @@ class W_BinOp(W_Root):
 	def gen_ans(self):
 		#Everything is a float natively!
 		if self.op == '+':	
-			return W_FloatObject(self.lval.floatval + self.rval.floatval)
+			return W_IntObject(self.lval.intval + self.rval.intval)
 		if self.op == '-':	
-			return W_FloatObject(self.lval.floatval - self.rval.floatval)
+			return W_IntObject(self.lval.intval - self.rval.intval)
 		if self.op == '*':	
-			return W_FloatObject(self.lval.floatval * self.rval.floatval)
+			return W_IntObject(self.lval.intval * self.rval.intval)
 		if self.op == '/':	
-			return W_FloatObject(self.lval.floatval / self.rval.floatval)
+			return W_IntObject(self.lval.intval / self.rval.intval)
 
 class W_StrObject(W_Root):
 	def __init__(self, strval):

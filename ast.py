@@ -33,8 +33,8 @@ class Number(Node):
 		self.value = value
 
 	def eval(self, ctx):
-		from interpreter import W_FloatObject
-		return W_FloatObject(self.value)
+		from interpreter import W_IntObject, W_IntObject
+		return W_IntObject(self.value)
 		
 class Id(Node):
 	def __init__(self, value):
@@ -120,14 +120,14 @@ class Print(Node):
 			try:
 				output = ctx.env[self.expression.eval(ctx).strval]
 
-				from interpreter import W_FloatObject, W_StrObject, W_ListObject
+				from interpreter import W_StrObject, W_ListObject, W_IntObject
 
-				if isinstance(output, W_FloatObject) or isinstance(output, W_StrObject):
+				if isinstance(output, W_IntObject) or isinstance(output, W_StrObject) or isinstance(output, W_IntObject):
 					print output.std_out()
 				elif isinstance(output, W_ListObject):
 					list_values = []
 					for value in output.f_list:
-						list_values.append(value.floatval) #Change floatval to std_out() for a broad range of support
+						list_values.append(value.std_out()) #Change floatval to std_out() for a broad range of support
 
 					print list_values
 
@@ -147,19 +147,19 @@ class Condition(Node): #Condition should return string that says True or False
 		self.rvalue = rvalue
 	
 	def eval(self, ctx):
-		from interpreter import W_BoolObject, W_FloatObject, W_StrObject
+		from interpreter import W_BoolObject, W_IntObject, W_StrObject
 		#print self.lvalue.eval(ctx), self.rvalue.eval(ctx)
-		if isinstance(self.lvalue.eval(ctx), W_FloatObject) and isinstance(self.rvalue.eval(ctx), W_FloatObject):
-			return W_BoolObject(self.lvalue.eval(ctx).floatval, self.cmp_op, self.rvalue.eval(ctx).floatval).return_val()
+		if isinstance(self.lvalue.eval(ctx), W_IntObject) and isinstance(self.rvalue.eval(ctx), W_IntObject):
+			return W_BoolObject(self.lvalue.eval(ctx).intval, self.cmp_op, self.rvalue.eval(ctx).intval).return_val()
 
 		elif isinstance(self.lvalue.eval(ctx), W_StrObject) and isinstance(self.rvalue.eval(ctx), W_StrObject):
-			return W_BoolObject(self.lvalue.eval(ctx).lookup(ctx).floatval, self.cmp_op, self.rvalue.eval(ctx).lookup(ctx).floatval).return_val()
+			return W_BoolObject(self.lvalue.eval(ctx).lookup(ctx).intval, self.cmp_op, self.rvalue.eval(ctx).lookup(ctx).intval).return_val()
 
-		elif isinstance(self.lvalue.eval(ctx), W_StrObject) and isinstance(self.rvalue.eval(ctx), W_FloatObject):
-			return W_BoolObject(self.lvalue.eval(ctx).lookup(ctx).floatval, self.cmp_op, self.rvalue.eval(ctx).floatval).return_val()
+		elif isinstance(self.lvalue.eval(ctx), W_StrObject) and isinstance(self.rvalue.eval(ctx), W_IntObject):
+			return W_BoolObject(self.lvalue.eval(ctx).lookup(ctx).intval, self.cmp_op, self.rvalue.eval(ctx).intval).return_val()
 		
-		elif isinstance(self.lvalue.eval(ctx), W_FloatObject) and isinstance(self.rvalue.eval(ctx), W_StrObject):
-			return W_BoolObject(self.lvalue.eval(ctx).floatval, self.cmp_op, self.rvalue.eval(ctx).lookup(ctx).floatval).return_val()
+		elif isinstance(self.lvalue.eval(ctx), W_IntObject) and isinstance(self.rvalue.eval(ctx), W_StrObject):
+			return W_BoolObject(self.lvalue.eval(ctx).intval, self.cmp_op, self.rvalue.eval(ctx).lookup(ctx).intval).return_val()
 
 class If(Node):
 	def __init__(self, condition, ifstatements, elsestatements):
@@ -183,7 +183,7 @@ class If(Node):
 				for nodes in self.elsestatements.getastlist():
 					nodes.eval(ctx)
 
-jitdriver = JitDriver(greens=['self'], reds=['condition', 'ctx'])
+jitdriver = JitDriver(greens=['self', 'ctx'], reds=['condition'])
 #Greens - Constant || Reds - Not constant
 
 class While(Node):
@@ -193,9 +193,9 @@ class While(Node):
 
 	def eval(self, ctx):
 		condition = self.condition.eval(ctx).std_out()
-
+		
 		while True:
-			jitdriver.jit_merge_point(condition=condition, self=self, ctx=ctx)
+			jitdriver.jit_merge_point(self=self, ctx=ctx, condition=condition)
 			condition = self.condition.eval(ctx).std_out()
 
 			if not condition is 'True':
@@ -210,18 +210,18 @@ class Binary_Operation(Node):
 		self.op = op
 
 	def eval(self, ctx):
-		from interpreter import W_BinOp, W_StrObject, W_FloatObject
+		from interpreter import W_BinOp, W_StrObject, W_IntObject
 
-		if isinstance(self.left.eval(ctx), W_FloatObject) and isinstance(self.right.eval(ctx), W_FloatObject): 
+		if isinstance(self.left.eval(ctx), W_IntObject) and isinstance(self.right.eval(ctx), W_IntObject): 
 			return W_BinOp(self.left.eval(ctx), self.right.eval(ctx), self.op).gen_ans()
 
 		elif isinstance(self.left.eval(ctx), W_StrObject) and isinstance(self.right.eval(ctx), W_StrObject): 
 			return W_BinOp(self.left.eval(ctx).lookup(ctx), self.right.eval(ctx).lookup(ctx), self.op).gen_ans()
 
-		elif isinstance(self.left.eval(ctx), W_StrObject) and isinstance(self.right.eval(ctx), W_FloatObject): 
+		elif isinstance(self.left.eval(ctx), W_StrObject) and isinstance(self.right.eval(ctx), W_IntObject): 
 			return W_BinOp(self.left.eval(ctx).lookup(ctx), self.right.eval(ctx), self.op).gen_ans()
 
-		elif isinstance(self.left.eval(ctx), W_FloatObject) and isinstance(self.right.eval(ctx), W_StrObject): 
+		elif isinstance(self.left.eval(ctx), W_IntObject) and isinstance(self.right.eval(ctx), W_StrObject): 
 			return W_BinOp(self.left.eval(ctx), self.right.eval(ctx).lookup(ctx), self.op).gen_ans()
 
 class List(Node):
@@ -235,10 +235,10 @@ class ListOp(Node):
 
 	def eval(self, ctx):
 		#print self.new_value.eval(ctx)
-		from interpreter import W_ListObject, W_StrObject, W_FloatObject
+		from interpreter import W_ListObject, W_StrObject, W_IntObject
 		try:
 			if (ctx.env[self.list_name], W_ListObject):
-				if isinstance(self.new_value.eval(ctx), W_FloatObject):
+				if isinstance(self.new_value.eval(ctx), W_IntObject):
 					ctx.env[self.list_name].append(self.new_value.eval(ctx))
 				elif isinstance(self.new_value.eval(ctx), W_StrObject):
 					ctx.env[self.list_name].append(self.new_value.eval(ctx).lookup(ctx))
@@ -345,3 +345,4 @@ class FunctionCall(Node):
 def jitpolicy(driver):
     from pypy.jit.codewriter.policy import JitPolicy
     return JitPolicy()
+

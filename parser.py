@@ -39,7 +39,7 @@ def identifier(p):
 
 @pg.production('expression : NUMBER')
 def expression_number(p):
-	return Number(float(p[0].getstr()))
+	return Number(int(p[0].getstr()))
 	
 @pg.production('expression : STRING')
 def expression_string(p):
