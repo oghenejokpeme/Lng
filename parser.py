@@ -100,6 +100,10 @@ def while_statement(p):
 	_, condition, _, statements, _ = p
 	return While(condition, statements)
 
+@pg.production('statement : RETURN statement')
+def return_statement(p):
+	return Return(p[1])
+
 @pg.production('statement : DEF ID LPAREN RPAREN LBRACE statements RBRACE')
 @pg.production('statement : DEF ID LPAREN statements RPAREN LBRACE statements RBRACE')
 def function_def(p):

@@ -183,7 +183,8 @@ class If(Node):
 				for nodes in self.elsestatements.getastlist():
 					nodes.eval(ctx)
 
-jitdriver = JitDriver(greens=['condition'], reds=[])
+jitdriver = JitDriver(greens=['self'], reds=['condition', 'ctx'])
+#Greens - Constant || Reds - Not constant
 
 class While(Node):
 	def __init__(self, condition, statements):
@@ -194,19 +195,13 @@ class While(Node):
 		condition = self.condition.eval(ctx).std_out()
 
 		while True:
-			jitdriver.jit_merge_point(condition=condition)
+			jitdriver.jit_merge_point(condition=condition, self=self, ctx=ctx)
 			condition = self.condition.eval(ctx).std_out()
 
 			if not condition is 'True':
 				break
 
 			self.statements.eval(ctx)
-		'''
-		while condition is 'True':
-			jitdriver.jit_merge_point(condition=condition)
-
-			self.statements.eval(ctx)
-			condition = self.condition.eval(ctx).std_out()'''
 
 class Binary_Operation(Node):
 	def __init__(self, left, right, op):
@@ -350,4 +345,3 @@ class FunctionCall(Node):
 def jitpolicy(driver):
     from pypy.jit.codewriter.policy import JitPolicy
     return JitPolicy()
-

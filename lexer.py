@@ -10,6 +10,8 @@ lg.add('WHILE', r'while')
 lg.add('DEF', r'def')
 lg.add('ASSIGN', r'=')
 
+lg.add('RETURN', r'return')
+
 #Mathematical Operators
 lg.add('PLUS', r'\+')
 lg.add('MINUS', r'-')
