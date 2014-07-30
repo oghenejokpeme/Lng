@@ -60,6 +60,7 @@ class Assignment(Node):
 
 	def eval(self, ctx):
 		#print self.expression
+
 		if isinstance(self.expression, Id):
 			try: 
 				reverse_ident = ctx.env[self.expression.eval(ctx).strval]
@@ -77,21 +78,29 @@ class Assignment(Node):
 		elif isinstance(self.expression, Binary_Operation) == True:
 			ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()
 
-		elif isinstance(self.expression, FunctionCall):
-			#Since function is getting assigned execute function before assignment
-			#Doesn't currently check if function has a return statemen or not.
-			self.expression.eval(ctx)
+		elif isinstance(self.expression, ClassOp):
+			ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()	
 
-			call = self.expression
-			
-			func_name = call.r_name().strval
-			func_name += "()"
-			try:
-				return_val = ctx.env[func_name]
-				ctx.env[self.lvalue.eval(ctx).strval] = return_val
-			except KeyError as e:
-				#Put yet to be written error function here
-				pass
+		elif isinstance(self.expression, Call):
+			#Since function is getting assigned execute function before assignment
+			#Doesn't currently check if function has a return statement or not.
+			if self.expression.r_name().strval in ctx.class_list:
+				ctx.class_objects[self.lvalue.eval(ctx).strval] = ctx.class_list[self.expression.r_name().strval]
+				self.expression.eval(ctx) #This calls the class_eval function in Call
+
+			else: 
+				self.expression.eval(ctx)
+
+				call = self.expression
+				
+				func_name = call.r_name().strval
+				func_name += "()"
+				try:
+					return_val = ctx.env[func_name]
+					ctx.env[self.lvalue.eval(ctx).strval] = return_val
+				except KeyError as e:
+					#Put yet to be written error function here
+					pass
 			
 		#The following two conditions handle lists
 		elif isinstance(self.expression, Block):
@@ -106,6 +115,9 @@ class Assignment(Node):
 			values = []
 			from interpreter import W_ListObject
 			ctx.env[self.lvalue.eval(ctx).strval] = W_ListObject(values)
+
+	def ret_lval(self):
+		return self.lvalue
 
 class Print(Node):
 	def __init__(self, expression):
@@ -127,8 +139,8 @@ class Print(Node):
 				elif isinstance(output, W_ListObject):
 					list_values = []
 					for value in output.f_list:
-						list_values.append(value.std_out()) #Change floatval to std_out() for a broad range of support
-
+						if isinstance(value, W_IntObject):
+							list_values.append(value.intval) #Change floatval to std_out() for a broad range of support
 					print list_values
 
 			except KeyError as e:
@@ -169,14 +181,14 @@ class If(Node):
 
 	def eval(self, ctx):
 		if self.elsestatements is None:
-			if self.condition.eval(ctx).std_out() == 'True': #self.condition here is an object of the W_StrObject class
+			if self.condition.eval(ctx).std_out() == 'True':
 				intern_states = self.ifstatements.getastlist()
 				for nodes in intern_states:
 					nodes.eval(ctx)
 			elif self.condition.eval(ctx).std_out() == 'False':
 				pass
 		elif isinstance(self.elsestatements, Block):
-			if self.condition.eval(ctx).std_out() == 'True': #self.condition here is an object of the W_StrObject class
+			if self.condition.eval(ctx).std_out() == 'True':
 				for nodes in self.ifstatements.getastlist():
 					nodes.eval(ctx)
 			elif self.condition.eval(ctx).std_out() == 'False':
@@ -247,6 +259,7 @@ class ListOp(Node):
 		except KeyError as e:
 			print "Cannot append to non-existent list: ", e
 
+
 class Function(Node):
 	def __init__(self, func_name, arglist, func_statements):
 		self.func_name = func_name
@@ -266,12 +279,12 @@ class Return(Node):
 	def eval(self, ctx):
 		pass
 
-class FunctionCall(Node):
+class Call(Node):
 	def __init__(self, func_name, func_arguments):
 		self.func_name = func_name
 		self.func_arguments = func_arguments
 
-	def eval(self, ctx):
+	def function_eval(self, ctx):
 		from interpreter import local_scope
 		l_env = local_scope()
 
@@ -338,11 +351,93 @@ class FunctionCall(Node):
 					#Execute to be written error output function
 					pass
 
+	def class_eval(self, ctx):
+		#At this point I know that a class instance has been created
+		pass
+
+
+
+	def eval(self, ctx):
+		if self.func_name in ctx.class_list:
+			self.class_eval(ctx)
+		else: 
+			self.function_eval(ctx)
+
+		
 	def r_name(self):
 		from interpreter import W_StrObject
 		return W_StrObject(self.func_name)
 
+class Class(Node):
+	def __init__(self, class_name, class_content):
+		self.class_name = class_name
+		self.class_content =class_content
+
+	def eval(self, ctx):
+		attributes = []; methods = []
+
+		for details in self.class_content.getastlist():
+			if not isinstance(details, Function):
+				attributes.append(details)
+			elif isinstance(details, Function):
+				methods.append(details)
+		
+		class_details = (attributes, methods)
+
+		ctx.class_list[self.class_name] = class_details
+
+class ClassOp(Node):
+	def __init__(self, instance_name, instance_attrib, instance_method, r_value):
+		self.instance_name = instance_name
+		self.instance_attrib = instance_attrib 
+		self.instance_method = instance_method
+		self.r_value = r_value
+
+	def eval(self, ctx):
+		from interpreter import class_scope
+		class_env = class_scope()
+		
+		#Handles attribute calls
+		if (self.instance_attrib is not None) and (self.r_value is None):
+			#Recreate the entire entity and push it to that space
+			try:
+				object_details = ctx.class_objects[self.instance_name]
+				attribute_list = object_details[0]
+
+				for attrib in attribute_list:
+					attrib.eval(class_env)
+
+			except KeyError as e:
+				#Put error function call here! sys.exit()
+				pass	
+
+			#Check instance has that attribute!
+			if self.instance_attrib.eval(ctx).std_out() in class_env.env:
+				return class_env.env[self.instance_attrib.eval(ctx).std_out()]
+		
+		#Handles instance calls
+		elif (self.instance_method is not None) and (self.r_value is None):
+			pass
+		
+		#Handles attribute assignments
+		elif self.r_value is not None:
+			position = 0
+
+			try:
+				object_details = ctx.class_objects[self.instance_name]
+				attribute_list = object_details[0]
+
+				p = 0 
+				for attrib in attribute_list:
+					if attrib.ret_lval().eval(ctx).std_out() == self.instance_attrib.eval(ctx).std_out():
+						position = p
+					p += 1
+
+				ctx.class_objects[self.instance_name][0][position] = Assignment(self.instance_attrib, self.r_value)
+			except KeyError:
+				#Sys.exit()
+				pass
+
 def jitpolicy(driver):
     from pypy.jit.codewriter.policy import JitPolicy
     return JitPolicy()
-

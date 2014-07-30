@@ -102,14 +102,19 @@ class W_BoolObject(W_Root):
 class Interpreter(W_Root):
 	def __init__(self):
 		self.env = {} #Global environment
-		self.local_env = {}
-		self.func_list = []
-		self.instructions = []
+		self.local_env = {} #Local environment for functions
+		self.func_list = [] #List of all defined functions
+		
 
-	def evaluate(self):
-		pass
+		self.class_list = {} #List of all defined classes
+		self.class_objects = {} #Mapping of object name to class name
+		
 
 #Function scoping hack.
 class local_scope(W_Root):
+	def __init__(self):
+		self.env = {}
+
+class class_scope(W_Root):
 	def __init__(self):
 		self.env = {}

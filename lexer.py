@@ -8,6 +8,8 @@ lg.add('IF', r'if')
 lg.add('ELSE', r'else')
 lg.add('WHILE', r'while')
 lg.add('DEF', r'def')
+lg.add('APPEND', r'append')
+lg.add('CLASS', r'class')
 lg.add('ASSIGN', r'=')
 
 lg.add('RETURN', r'return')

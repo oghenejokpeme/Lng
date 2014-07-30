@@ -1,11 +1,8 @@
-class execl(object):
-	def __init__(self):
-		self.env = {}
+class trial():
+	x = 5
 
-	def eval(self):
+y = trial
+y.x
 
-		class insideClass(object):
-			def __init__(self):
-				self.test = []
-				
-		print "Mode!"
+z = y.x
+print z

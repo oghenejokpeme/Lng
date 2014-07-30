@@ -24,8 +24,8 @@ def entry_point(argv):
 
     ctx = Interpreter()
     ast.eval(ctx)
-    #print ctx.env
-    #print ctx.func_list
+
+    #print ctx.class_list, "\n\n", ctx.class_objects, "\n"
 
     return 0
 
