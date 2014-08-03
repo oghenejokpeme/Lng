@@ -79,7 +79,19 @@ class Assignment(Node):
 			ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()
 
 		elif isinstance(self.expression, ClassOp):
-			ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()	
+			if self.expression.eval(ctx) is not None:
+				ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()
+			else: #Write a better check at a later time
+				method_name = "instance_"
+				method_name += self.expression.ret_ins_name().strval
+				method_name += "()"
+
+				try:
+					return_val = ctx.env[method_name]
+					ctx.env[self.lvalue.eval(ctx).strval] = return_val
+				except KeyError as e:
+					#Sys.exit(1)
+					pass
 
 		elif isinstance(self.expression, Call):
 			#Since function is getting assigned execute function before assignment
@@ -90,7 +102,6 @@ class Assignment(Node):
 
 			else: 
 				self.expression.eval(ctx)
-
 				call = self.expression
 				
 				func_name = call.r_name().strval
@@ -272,6 +283,12 @@ class Function(Node):
 		ctx.func_list.append(func_details)
 		#Makes function details and pushes them to the function list
 
+	def method_eval(self, class_env):
+		#print self.func_statements #self.func_statements returns a block object
+		func_details = (self.func_name, self.arglist, self.func_statements)
+		class_env.func_list.append(func_details)
+		#Makes function details and pushes them to the function list
+
 class Return(Node):
 	def __init__(self, return_val):
 		self.return_val = return_val
@@ -387,11 +404,35 @@ class Class(Node):
 		ctx.class_list[self.class_name] = class_details
 
 class ClassOp(Node):
-	def __init__(self, instance_name, instance_attrib, instance_method, r_value):
+	def __init__(self, instance_name, instance_attrib, instance_method, r_value, func_arguments):
 		self.instance_name = instance_name
 		self.instance_attrib = instance_attrib 
 		self.instance_method = instance_method
 		self.r_value = r_value
+		self.func_arguments = func_arguments
+
+	def update_class_env(self, ctx, class_env):
+		try:
+			object_details = ctx.class_objects[self.instance_name]
+			attribute_list = object_details[0]
+
+			for attrib in attribute_list:
+				attrib.eval(class_env)
+
+		except KeyError as e:
+				#Put error function call here! sys.exit()
+				pass
+
+	def update_method_env(self, ctx, class_env):
+		try:
+			instance_methods = ctx.class_objects[self.instance_name][1]
+				
+			for method in instance_methods:
+				method.method_eval(class_env)
+
+		except KeyError as e:
+			#Sys.exit()
+			pass
 
 	def eval(self, ctx):
 		from interpreter import class_scope
@@ -400,16 +441,7 @@ class ClassOp(Node):
 		#Handles attribute calls
 		if (self.instance_attrib is not None) and (self.r_value is None):
 			#Recreate the entire entity and push it to that space
-			try:
-				object_details = ctx.class_objects[self.instance_name]
-				attribute_list = object_details[0]
-
-				for attrib in attribute_list:
-					attrib.eval(class_env)
-
-			except KeyError as e:
-				#Put error function call here! sys.exit()
-				pass	
+			self.update_class_env(ctx, class_env)		
 
 			#Check instance has that attribute!
 			if self.instance_attrib.eval(ctx).std_out() in class_env.env:
@@ -417,8 +449,58 @@ class ClassOp(Node):
 		
 		#Handles instance calls
 		elif (self.instance_method is not None) and (self.r_value is None):
-			pass
-		
+			self.update_class_env(ctx, class_env)
+
+			self.update_method_env(ctx, class_env)
+			
+			#print class_env.func_list
+
+			for method in class_env.func_list:
+				#handles methods without arguments
+				if (method[0] == self.instance_method) and (method[1] is None):
+					for statement in method[2].getastlist():
+						if not isinstance(statement, Return):
+							statement.eval(class_env)
+						else:
+							if isinstance(statement.return_val, Id):
+								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env).lookup(class_env)
+							elif isinstance(statement.return_val, Number):
+								#Sort out what should happen when it's 0, 1 or -1
+								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env)
+							elif isinstance(statement.return_val, String):
+								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env)
+
+				#Handles methods with arguments
+				elif (method[0] == self.instance_method) and (method[1] is not None):
+					
+					arg_values = self.func_arguments.getastlist(); arg_names = method[1].getastlist()
+
+					pos = 0
+					for name in arg_names:
+						name = name.eval(class_env).strval
+
+						if isinstance(arg_values[pos], Id):
+							value = arg_values[pos].eval(class_env).lookup(ctx)
+							class_env.env[name] = value
+						elif isinstance(arg_values[pos], Number):
+							value = arg_values[pos].eval(class_env)
+							class_env.env[name] = value
+						
+						pos += 1
+
+					#Execute all the inside statements
+					for statement in method[2].getastlist():
+						if not isinstance(statement, Return):
+							statement.eval(class_env)
+						else:
+							if isinstance(statement.return_val, Id):
+								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env).lookup(class_env)
+							elif isinstance(statement.return_val, Number):
+								#Sort out what should happen when it's 0, 1 or -1
+								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env)
+							elif isinstance(statement.return_val, String):
+								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env)				
+						
 		#Handles attribute assignments
 		elif self.r_value is not None:
 			position = 0
@@ -437,6 +519,10 @@ class ClassOp(Node):
 			except KeyError:
 				#Sys.exit()
 				pass
+
+	def ret_ins_name(self):
+		from interpreter import W_StrObject
+		return W_StrObject(self.instance_name)
 
 def jitpolicy(driver):
     from pypy.jit.codewriter.policy import JitPolicy

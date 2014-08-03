@@ -133,18 +133,24 @@ def class_definition(p):
 
 @pg.production('statement : ID PERIOD ID')
 @pg.production('statement : ID PERIOD ID LPAREN RPAREN')
+@pg.production('statement : ID PERIOD ID LPAREN statements RPAREN')
 def expressoin_list_operation(p):
 	if len(p) == 3:
 		instance_name, _, instance_attrib = p
-		return ClassOp(instance_name.getstr(), Id(instance_attrib.getstr()), None, None)
+		return ClassOp(instance_name.getstr(), Id(instance_attrib.getstr()), None, None, None)
 	elif len(p) == 5 and p[3].getstr() == '(':
 		instance_name, _, instance_method, _, _ = p
-		return ClassOp(instance_name.getstr(), None, instance_method.getstr(), None)
+		return ClassOp(instance_name.getstr(), None, instance_method.getstr(), None, None)
+	elif len(p) == 6:
+		instance_name, _, instance_method, _, method_arguments,_ = p
+		return ClassOp(instance_name.getstr(), None, instance_method.getstr(), None, method_arguments)
+
+
 
 @pg.production('statement : ID PERIOD ID ASSIGN expression')
 def class_attrib_assign(p):
 	instance_name, _, attrib_name, _, rvalue = p
-	return ClassOp(instance_name.getstr(), Id(attrib_name.getstr()), None, rvalue)
+	return ClassOp(instance_name.getstr(), Id(attrib_name.getstr()), None, rvalue, None)
 
 parser = pg.build()
 

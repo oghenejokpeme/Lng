@@ -118,3 +118,4 @@ class local_scope(W_Root):
 class class_scope(W_Root):
 	def __init__(self):
 		self.env = {}
+		self.func_list = []
