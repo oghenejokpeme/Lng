@@ -33,7 +33,6 @@ class W_BinOp(W_Root):
 		self.op = op 
 
 	def gen_ans(self):
-		#Everything is a float natively!
 		if self.op == '+':	
 			return W_IntObject(self.lval.intval + self.rval.intval)
 		if self.op == '-':	

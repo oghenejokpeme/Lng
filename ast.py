@@ -1,5 +1,5 @@
 from rply.token import BaseBox
-from rpython.rlib.jit import JitDriver 
+from rpython.rlib.jit import JitDriver, purefunction, hint, promote
 
 class Node(BaseBox):
 	def __eq__(self, other):
@@ -215,6 +215,8 @@ class While(Node):
 		self.statements = statements
 
 	def eval(self, ctx):
+		self = hint(self, promote=True)
+		condtion = hint(self, promote=True)
 		condition = self.condition.eval(ctx).std_out()
 		
 		while True:
@@ -265,7 +267,6 @@ class ListOp(Node):
 					ctx.env[self.list_name].append(self.new_value.eval(ctx))
 				elif isinstance(self.new_value.eval(ctx), W_StrObject):
 					ctx.env[self.list_name].append(self.new_value.eval(ctx).lookup(ctx))
-					#print self.new_value.eval(ctx).lookup(ctx)
 
 		except KeyError as e:
 			print "Cannot append to non-existent list: ", e
