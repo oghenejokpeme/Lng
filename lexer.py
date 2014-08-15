@@ -20,7 +20,6 @@ lg.add('MINUS', r'-')
 lg.add('MULT', r'\*')
 lg.add('DIVIDE', r'/')
 lg.add('PERIOD', r'\.')
-#lg.add('OP', r'\+|\-|\*|\/')
 
 #Comparison op
 lg.add('CMP', r'(\>=)|(\<=)|(<>)|(>)|(<)|(!=)')

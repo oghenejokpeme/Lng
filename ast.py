@@ -62,7 +62,8 @@ class Assignment(Node):
 				reverse_ident = ctx.env[self.expression.eval(ctx).strval]
 				ctx.env[self.lvalue.eval(ctx).strval] = reverse_ident
 			except KeyError as e:
-				raise Exception('Undefined assignment!')
+				#raise Exception('Undefined assignment!')
+				raise KeyError(': ' + str(e))
 
 		elif isinstance(self.expression, Number):
 			ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()
@@ -76,7 +77,7 @@ class Assignment(Node):
 		elif isinstance(self.expression, ClassOp):
 			if self.expression.eval(ctx) is not None:
 				ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()
-			else: #Write a better check at a later time
+			else: #Write a better check
 				method_name = "instance_"
 				method_name += self.expression.ret_ins_name().strval
 				method_name += "()"
@@ -85,8 +86,7 @@ class Assignment(Node):
 					return_val = ctx.env[method_name]
 					ctx.env[self.lvalue.eval(ctx).strval] = return_val
 				except KeyError as e:
-					#Sys.exit(1)
-					pass
+					raise KeyError(': ' + str(e))
 
 		elif isinstance(self.expression, Call):
 			#Since function is getting assigned execute function before assignment
@@ -104,9 +104,7 @@ class Assignment(Node):
 					return_val = ctx.env[func_name]
 					ctx.env[self.lvalue.eval(ctx).strval] = return_val
 				except KeyError as e:
-					print "Error should've happened here!"
-					#Sys.exit()
-					pass
+					raise KeyError(': ' + str(e))
 		#The following two conditions handle lists
 		elif isinstance(self.expression, Block):
 			values = []
@@ -159,7 +157,7 @@ class Print(Node):
 					print list_values
 
 			except KeyError as e:
-				raise NameError('name ' + str(e) + ' is not defined')
+				raise KeyError(': ' + str(e))
 
 class Condition(Node):
 	def __init__(self, lvalue, cmp_op, rvalue):
@@ -263,7 +261,7 @@ class ListOp(Node):
 					ctx.env[self.list_name].append(self.new_value.eval(ctx).lookup(ctx))
 
 		except KeyError as e:
-			print "Cannot append to non-existent list: ", e
+			raise KeyError(': ' + str(e))
 
 
 class Function(Node):
