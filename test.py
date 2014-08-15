@@ -1,8 +1,7 @@
-class trial():
-	x = 5
+def x():
+	print "something"
+	return
 
-y = trial
-y.x
+x()
 
-z = y.x
-print z
+print "There"

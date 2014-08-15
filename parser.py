@@ -1,9 +1,6 @@
 from rply import ParserGenerator
-
 from lexer import lexer
 from ast import *
-#from ast_bckp import *
-from lexer import test_lex
 
 pg = ParserGenerator(
 	[rule.name for rule in lexer.rules],
@@ -30,7 +27,6 @@ def statements(p):
 @pg.production('statement : expression')
 def statement_expression(p):
 	return p[0]
-	#return Statement(p[0])
 
 @pg.production('expression : ID')
 def identifier(p):
@@ -48,11 +44,10 @@ def expression_string(p):
 @pg.production('statement : LBRACKET statements RBRACKET')
 @pg.production('statement : LBRACKET RBRACKET')
 def expression_list(p):
-	#p[1] Returns a Block object of everything in the braces
 	if len(p) == 3:
 		return p[1]
 	elif len(p) == 2:
-		return List() #Returns an empty list, used this to handled instantiation of empty list
+		return List()
 
 @pg.production('statement : ID PERIOD APPEND LPAREN expression RPAREN')
 def expressoin_list_operation(p):
@@ -109,7 +104,6 @@ def return_statement(p):
 def function_def(p):
 	if len(p) == 7:
 		_, func_name, _, _, _, func_statements, _ = p 
-		#print func_name, func_statements
 		return Function(func_name.getstr(), None, func_statements)
 	elif len(p) == 8:
 		_, func_name, _, arglist, _, _, func_statements, _ = p
@@ -120,10 +114,8 @@ def function_def(p):
 @pg.production('statement : ID LPAREN statements RPAREN')
 def function_call(p):
 	if len(p) == 3:
-		#print p[0].getstr()
 		return Call(p[0].getstr(), None)
 	elif len(p) == 4:
-		#print p[0], p[2]
 		return Call(p[0].getstr(), p[2])
 
 @pg.production('statement : CLASS ID LPAREN RPAREN LBRACE statements RBRACE')
@@ -134,7 +126,7 @@ def class_definition(p):
 @pg.production('statement : ID PERIOD ID')
 @pg.production('statement : ID PERIOD ID LPAREN RPAREN')
 @pg.production('statement : ID PERIOD ID LPAREN statements RPAREN')
-def expressoin_list_operation(p):
+def expression_list_operation(p):
 	if len(p) == 3:
 		instance_name, _, instance_attrib = p
 		return ClassOp(instance_name.getstr(), Id(instance_attrib.getstr()), None, None, None)
@@ -146,7 +138,6 @@ def expressoin_list_operation(p):
 		return ClassOp(instance_name.getstr(), None, instance_method.getstr(), None, method_arguments)
 
 
-
 @pg.production('statement : ID PERIOD ID ASSIGN expression')
 def class_attrib_assign(p):
 	instance_name, _, attrib_name, _, rvalue = p
@@ -155,6 +146,4 @@ def class_attrib_assign(p):
 parser = pg.build()
 
 def parse(source):
-	#test_lex(source)
-	#return parser.parse(lexer.lex(source)).eval()
 	return parser.parse(lexer.lex(source))

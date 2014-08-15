@@ -1,0 +1,6 @@
+m = 20
+
+while m != 0 {
+	m = m -1
+	print m
+}

@@ -1,0 +1,29 @@
+#m = 0
+
+#while m <= 10 {
+#	print m
+#	m = m + 1
+#}
+
+#print y
+#a = 5
+
+#def c(a b){
+#	print a
+#	print b
+#}
+
+#c(a 3)
+
+
+#m = 3
+#print m
+
+#def m(){
+#	m = 5
+#	print m
+#}
+
+#m()
+
+#print m

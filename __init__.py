@@ -1,6 +1,6 @@
 import sys
 import os
-
+from rply.errors import ParsingError, LexingError
 from parser import parse
 from interpreter import Interpreter
 
@@ -17,16 +17,15 @@ def entry_point(argv):
         print "Input file required!"
         return 1
 
-    #Run program
     source = ''
     source += read_file(os.open(filename, os.O_RDONLY, 0777))
-    ast = parse(source)
-
-    ctx = Interpreter()
-    ast.eval(ctx)
-
-    #print ctx.class_list, "\n\n", ctx.class_objects, "\n"
-
+    
+    try:
+    	ast = parse(source)
+    	ctx = Interpreter()
+    	ast.eval(ctx)
+    except (ParsingError, LexingError) as e:
+    	raise SyntaxError('invalid syntax' + str(e))
     return 0
 
 def target(*args):

@@ -1,5 +1,5 @@
 from rply.token import BaseBox
-from rpython.rlib.jit import JitDriver, purefunction, hint, promote
+from rpython.rlib.jit import JitDriver, promote
 
 class Node(BaseBox):
 	def __eq__(self, other):
@@ -19,13 +19,11 @@ class Block(Node):
 		self.statementlist = []
 		for statements in self.statements:
 			self.statementlist.append(statements)
-
 		return self.statementlist
 
 	def eval(self, ctx):
 		statements =  self.statements
 		for returns in statements:
-			#print returns
 			returns.eval(ctx)
 
 class Number(Node):
@@ -33,7 +31,7 @@ class Number(Node):
 		self.value = value
 
 	def eval(self, ctx):
-		from interpreter import W_IntObject, W_IntObject
+		from interpreter import W_IntObject
 		return W_IntObject(self.value)
 		
 class Id(Node):
@@ -59,15 +57,12 @@ class Assignment(Node):
 		self.expression =  expression
 
 	def eval(self, ctx):
-		#print self.expression
-
 		if isinstance(self.expression, Id):
 			try: 
 				reverse_ident = ctx.env[self.expression.eval(ctx).strval]
 				ctx.env[self.lvalue.eval(ctx).strval] = reverse_ident
 			except KeyError as e:
 				raise Exception('Undefined assignment!')
-				pass
 
 		elif isinstance(self.expression, Number):
 			ctx.env[self.lvalue.eval(ctx).strval] = self.expression.eval(ctx).r_self()
@@ -99,7 +94,6 @@ class Assignment(Node):
 			if self.expression.r_name().strval in ctx.class_list:
 				ctx.class_objects[self.lvalue.eval(ctx).strval] = ctx.class_list[self.expression.r_name().strval]
 				self.expression.eval(ctx) #This calls the class_eval function in Call
-
 			else: 
 				self.expression.eval(ctx)
 				call = self.expression
@@ -110,9 +104,9 @@ class Assignment(Node):
 					return_val = ctx.env[func_name]
 					ctx.env[self.lvalue.eval(ctx).strval] = return_val
 				except KeyError as e:
-					#Put yet to be written error function here
+					print "Error should've happened here!"
+					#Sys.exit()
 					pass
-			
 		#The following two conditions handle lists
 		elif isinstance(self.expression, Block):
 			values = []
@@ -137,33 +131,37 @@ class Print(Node):
 	def eval(self, ctx):
 		#print self.expression
 		if isinstance(self.expression, String):
+			#Direct Output
 			print self.expression.eval(ctx).strval
+
+		elif isinstance(self.expression, Binary_Operation):
+			#Direct Output
+			print self.expression.eval(ctx).std_out()
+
+		elif isinstance(self.expression, Condition):
+			#Direct Output
+			print self.expression.eval(ctx).std_out()
 
 		elif isinstance(self.expression, Id):
 			try:
 				output = ctx.env[self.expression.eval(ctx).strval]
 
 				from interpreter import W_StrObject, W_ListObject, W_IntObject
-
 				if isinstance(output, W_IntObject) or isinstance(output, W_StrObject) or isinstance(output, W_IntObject):
+					#Direct Output
 					print output.std_out()
 				elif isinstance(output, W_ListObject):
 					list_values = []
 					for value in output.f_list:
 						if isinstance(value, W_IntObject):
-							list_values.append(value.intval) #Change floatval to std_out() for a broad range of support
+							list_values.append(value.intval)
+					#Direct Output
 					print list_values
 
 			except KeyError as e:
-				print 'Undefined Variable:', e
+				raise NameError('name ' + str(e) + ' is not defined')
 
-		elif isinstance(self.expression, Binary_Operation):
-			print self.expression.eval(ctx).std_out()
-
-		elif isinstance(self.expression, Condition):
-			print self.expression.eval(ctx).std_out()
-
-class Condition(Node): #Condition should return string that says True or False
+class Condition(Node):
 	def __init__(self, lvalue, cmp_op, rvalue):
 		self.lvalue = lvalue
 		self.cmp_op = cmp_op
@@ -171,7 +169,7 @@ class Condition(Node): #Condition should return string that says True or False
 	
 	def eval(self, ctx):
 		from interpreter import W_BoolObject, W_IntObject, W_StrObject
-		#print self.lvalue.eval(ctx), self.rvalue.eval(ctx)
+
 		if isinstance(self.lvalue.eval(ctx), W_IntObject) and isinstance(self.rvalue.eval(ctx), W_IntObject):
 			return W_BoolObject(self.lvalue.eval(ctx).intval, self.cmp_op, self.rvalue.eval(ctx).intval).return_val()
 
@@ -206,7 +204,7 @@ class If(Node):
 				for nodes in self.elsestatements.getastlist():
 					nodes.eval(ctx)
 
-jitdriver = JitDriver(greens=['self', 'ctx'], reds=['condition'])
+jitdriver = JitDriver(greens=['self'], reds=['ctx'])
 #Greens - Constant || Reds - Not constant
 
 class While(Node):
@@ -215,18 +213,15 @@ class While(Node):
 		self.statements = statements
 
 	def eval(self, ctx):
-		self = hint(self, promote=True)
-		condtion = hint(self, promote=True)
-		condition = self.condition.eval(ctx).std_out()
-		
-		while True:
-			jitdriver.jit_merge_point(self=self, ctx=ctx, condition=condition)
-			condition = self.condition.eval(ctx).std_out()
+		promote(self.statements)
+		while True:	
+			jitdriver.jit_merge_point(self=self, ctx=ctx)
 
-			if not condition is 'True':
+			if not self.condition.eval(ctx).std_out() is 'True':
 				break
 
 			self.statements.eval(ctx)
+			jitdriver.can_enter_jit(self=self, ctx=ctx)
 
 class Binary_Operation(Node):
 	def __init__(self, left, right, op):
@@ -259,7 +254,6 @@ class ListOp(Node):
 		self.new_value = new_value
 
 	def eval(self, ctx):
-		#print self.new_value.eval(ctx)
 		from interpreter import W_ListObject, W_StrObject, W_IntObject
 		try:
 			if (ctx.env[self.list_name], W_ListObject):
@@ -279,13 +273,11 @@ class Function(Node):
 		self.arglist = arglist
 
 	def eval(self, ctx):
-		#print self.func_statements #self.func_statements returns a block object
 		func_details = (self.func_name, self.arglist, self.func_statements)
 		ctx.func_list.append(func_details)
 		#Makes function details and pushes them to the function list
 
 	def method_eval(self, class_env):
-		#print self.func_statements #self.func_statements returns a block object
 		func_details = (self.func_name, self.arglist, self.func_statements)
 		class_env.func_list.append(func_details)
 		#Makes function details and pushes them to the function list
@@ -311,8 +303,6 @@ class Call(Node):
 			if len(ctx.func_list) > 0:
 				for defined_function in ctx.func_list:
 					if self.func_name == defined_function[0]:
-						#defined_function[2].eval(l_env)
-
 						#Return statement
 						for statement in defined_function[2].getastlist():
 							if not isinstance(statement, Return):
@@ -321,11 +311,16 @@ class Call(Node):
 								if isinstance(statement.return_val, Id):
 									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env).lookup(l_env)
 								elif isinstance(statement.return_val, Number):
-									#Sort out what should happen when it's 0, 1 or -1
-									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env)
+									if statement.return_val.eval(l_env).std_out() == '0':
+										return
+									elif statement.return_val.eval(l_env).std_out() == '1':
+										return
 								elif isinstance(statement.return_val, String):
 									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env)
-
+					else:
+						raise NameError('name \'' + self.func_name + '\' is not defined')
+			else:
+				raise NameError('name \'' + self.func_name + '\' is not defined')
 		#Functions with arguments
 		elif self.func_arguments is not None:
 			#compare the number of arguments to the actual number of arguments the function should take
@@ -356,31 +351,27 @@ class Call(Node):
 								if isinstance(statement.return_val, Id):
 									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env).lookup(l_env)
 								elif isinstance(statement.return_val, Number):
-									#Sort out what should happen when it's 0, 1 or -1
-									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env)
+									if statement.return_val.eval(l_env).std_out() == '0':
+										return
+									elif statement.return_val.eval(l_env).std_out() == '1':
+										return
 								elif isinstance(statement.return_val, String):
 									ctx.env[self.func_name + "()"] = statement.return_val.eval(l_env)
 						
 					else:
-						#Execute to be written error output function
-						pass
+						raise NameError('name \'' + self.func_name + '\' is not defined')
 
 				else:
-					#Execute to be written error output function
-					pass
+					raise AttributeError('name \'' + self.func_name + '\' is not defined')
 
 	def class_eval(self, ctx):
-		#At this point I know that a class instance has been created
 		pass
-
-
 
 	def eval(self, ctx):
 		if self.func_name in ctx.class_list:
 			self.class_eval(ctx)
 		else: 
 			self.function_eval(ctx)
-
 		
 	def r_name(self):
 		from interpreter import W_StrObject
@@ -421,8 +412,7 @@ class ClassOp(Node):
 				attrib.eval(class_env)
 
 		except KeyError as e:
-				#Put error function call here! sys.exit()
-				pass
+			raise KeyError(': ' + str(e))
 
 	def update_method_env(self, ctx, class_env):
 		try:
@@ -432,8 +422,7 @@ class ClassOp(Node):
 				method.method_eval(class_env)
 
 		except KeyError as e:
-			#Sys.exit()
-			pass
+			raise KeyError(': ' + str(e))
 
 	def eval(self, ctx):
 		from interpreter import class_scope
@@ -453,9 +442,7 @@ class ClassOp(Node):
 			self.update_class_env(ctx, class_env)
 
 			self.update_method_env(ctx, class_env)
-			
-			#print class_env.func_list
-
+	
 			for method in class_env.func_list:
 				#handles methods without arguments
 				if (method[0] == self.instance_method) and (method[1] is None):
@@ -466,8 +453,10 @@ class ClassOp(Node):
 							if isinstance(statement.return_val, Id):
 								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env).lookup(class_env)
 							elif isinstance(statement.return_val, Number):
-								#Sort out what should happen when it's 0, 1 or -1
-								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env)
+								if statement.return_val.eval(class_env).std_out() == '0':
+									return
+								elif statement.return_val.eval(class_env).std_out() == '1':
+									return
 							elif isinstance(statement.return_val, String):
 								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env)
 
@@ -497,8 +486,10 @@ class ClassOp(Node):
 							if isinstance(statement.return_val, Id):
 								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env).lookup(class_env)
 							elif isinstance(statement.return_val, Number):
-								#Sort out what should happen when it's 0, 1 or -1
-								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env)
+								if statement.return_val.eval(class_env).std_out() == '0':
+									return
+								elif statement.return_val.eval(class_env).std_out() == '1':
+									return
 							elif isinstance(statement.return_val, String):
 								ctx.env["instance_" + self.instance_name + "()"] = statement.return_val.eval(class_env)				
 						
@@ -517,9 +508,8 @@ class ClassOp(Node):
 					p += 1
 
 				ctx.class_objects[self.instance_name][0][position] = Assignment(self.instance_attrib, self.r_value)
-			except KeyError:
-				#Sys.exit()
-				pass
+			except KeyError as e:
+				raise KeyError(': ' + str(e))
 
 	def ret_ins_name(self):
 		from interpreter import W_StrObject

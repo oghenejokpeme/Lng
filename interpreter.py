@@ -113,6 +113,11 @@ class Interpreter(W_Root):
 class local_scope(W_Root):
 	def __init__(self):
 		self.env = {}
+		self.local_env = {}
+		self.func_list = []
+
+		self.class_list = {}
+		self.class_objects = {}
 
 class class_scope(W_Root):
 	def __init__(self):

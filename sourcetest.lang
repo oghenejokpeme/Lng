@@ -1,8 +1,50 @@
-m = 10
+class name(){
+	value = 4
+	name = "Sam Smith"
 
-while m != 0 {
-	print m
-	m = m -1
-} 
+	def method_one(){
+		print value
+		print "something"
 
-print m
+		return value
+	}
+
+	def method_two(){
+		print value
+	}
+
+	def method_three(a c){
+		z = a + c
+		return z
+	}
+}
+
+class another(){
+	value = 10
+	name = "Orhobor Jk"
+
+	def method_one(){
+		print "something"
+	}
+
+	def method_two(){
+		print value
+	}
+}
+
+
+y = name()
+
+#z = y.name
+#print z
+a = 4
+c = 3
+
+
+#p = y.method_three(a c)
+#print p
+
+p = y.method_three(a c)
+print p
+
+#y.method_two()

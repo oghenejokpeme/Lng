@@ -62,4 +62,4 @@ def test_lex(source):
 
     for tok in tokens:
         code.append(tok)
-        print tok
+        return tok
