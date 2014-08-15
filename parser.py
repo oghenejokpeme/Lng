@@ -30,7 +30,6 @@ def statement_expression(p):
 
 @pg.production('expression : ID')
 def identifier(p):
-	#print p[0].getstr()
 	return Id(p[0].getstr())
 
 @pg.production('expression : NUMBER')
@@ -51,7 +50,6 @@ def expression_list(p):
 
 @pg.production('statement : ID PERIOD APPEND LPAREN expression RPAREN')
 def expressoin_list_operation(p):
-	#x->(6)
 	list_name, _, _, _, value, _ = p
 	return ListOp(list_name.getstr(), value)
 
