@@ -1,5 +1,5 @@
 from rply.token import BaseBox
-from rpython.rlib.jit import JitDriver, promote
+from rpython.rlib.jit import JitDriver
 
 class Node(BaseBox):
 	def __eq__(self, other):
@@ -211,7 +211,6 @@ class While(Node):
 		self.statements = statements
 
 	def eval(self, ctx):
-		promote(self.statements)
 		while True:	
 			jitdriver.jit_merge_point(self=self, ctx=ctx)
 
@@ -512,7 +511,8 @@ class ClassOp(Node):
 	def ret_ins_name(self):
 		from interpreter import W_StrObject
 		return W_StrObject(self.instance_name)
-
+'''
 def jitpolicy(driver):
     from pypy.jit.codewriter.policy import JitPolicy
     return JitPolicy()
+'''
